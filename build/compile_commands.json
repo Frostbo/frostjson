@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/frostbo/frostjson/build",
+  "command": "/usr/bin/clang++   -g -o CMakeFiles/frostjson_lib.dir/frostjson.cpp.o -c /home/frostbo/frostjson/frostjson.cpp",
+  "file": "/home/frostbo/frostjson/frostjson.cpp"
+},
+{
+  "directory": "/home/frostbo/frostjson/build",
+  "command": "/usr/bin/clang++   -g -o CMakeFiles/frostjson_test.dir/test.cpp.o -c /home/frostbo/frostjson/test.cpp",
+  "file": "/home/frostbo/frostjson/test.cpp"
+}
+]
