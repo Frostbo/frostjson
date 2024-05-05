@@ -21,34 +21,46 @@ static int test_pass = 0;
 
 #define EXPECT_EQ_INT(expect, actual)  EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%d")
 #define EXPECT_EQ_DOUBLE(expect, actual)  EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%.17g")
+#define EXPECT_EQ_STRING(expect, actual, alength) \
+    EXPECT_EQ_BASE(sizeof(expect) - 1 == alength && memcmp(expect, actual, alength) == 0, expect, actual, "%s")
+#define EXPECT_TRUE(actual) EXPECT_EQ_BASE((actual) != 0, "true", "false", "%s")
+#define EXPECT_FALSE(actual) EXPECT_EQ_BASE((actual) == 0, "false", "true", "%s")
 
 static void test_parse_null() {
     frost_value val;
     val.type = FROST_FALSE;
+    frost_set_boolean(&val, 0);
     EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&val, "null"));
     EXPECT_EQ_INT(FROST_NULL, frost_get_type(&val));
+    frost_free(&val);
 }
 
 static void test_parse_true() {
     frost_value val;
     val.type = FROST_FALSE;
+    frost_set_boolean(&val, 0);
     EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&val, "true"));
     EXPECT_EQ_INT(FROST_TRUE, frost_get_type(&val));
+    frost_free(&val);
 }
 
 static void test_parse_false() {
     frost_value val;
     val.type = FROST_TRUE;
+    frost_set_boolean(&val, 1);
     EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&val, "false"));
     EXPECT_EQ_INT(FROST_FALSE, frost_get_type(&val));
+    frost_free(&val);
 }
 
 #define TEST_NUMBER(expect, json)\
     do {\
         frost_value v;\
+        frost_init(&v);\
         EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&v, json));\
         EXPECT_EQ_INT(FROST_NUMBER, frost_get_type(&v));\
         EXPECT_EQ_DOUBLE(expect, frost_get_number(&v));\
+        frost_free(&v);\
     } while(0)
 
 static void test_parse_number(){
@@ -87,9 +99,11 @@ static void test_parse_number(){
 #define TEST_ERROR(error, json)\
     do {\
         frost_value v;\
+        frost_init(&v);\
         v.type = FROST_FALSE;\
         EXPECT_EQ_INT(error, frost_parse(&v, json));\
         EXPECT_EQ_INT(FROST_NULL, frost_get_type(&v));\
+        frost_free(&v);\
     } while(0)
 
 static void test_parse_expect_value() {
@@ -126,6 +140,63 @@ static void test_parse_number_too_big() {
     TEST_ERROR(FROST_PARSE_NUMBER_TOO_BIG, "-1e309");
 }
 
+static void test_parse_missing_quotation_mark() {
+    TEST_ERROR(FROST_PARSE_MISS_QUOTATION_MARK, "\"");
+    TEST_ERROR(FROST_PARSE_MISS_QUOTATION_MARK, "\"abc");
+}
+
+static void test_parse_invalid_string_escape() {
+    TEST_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\v\"");
+    TEST_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\'\"");
+    TEST_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\0\"");
+    TEST_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\x12\"");
+}
+
+static void test_parse_invalid_string_char() {
+    TEST_ERROR(FROST_PARSE_INVALID_STRING_CHAR, "\"\x01\"");
+    TEST_ERROR(FROST_PARSE_INVALID_STRING_CHAR, "\"\x1F\"");
+}
+
+static void test_access_null() {
+    frost_value val;
+    frost_init(&val);
+    frost_set_string(&val, "a", 1);
+    frost_set_null(&val);
+    EXPECT_EQ_INT(FROST_NULL, frost_get_type(&val));
+    frost_free(&val);
+}
+
+static void test_access_boolean() {
+    frost_value val;
+    frost_init(&val);
+    frost_set_string(&val, "a", 1);
+    frost_set_boolean(&val, 1);
+    EXPECT_TRUE(frost_get_boolean(&val));
+    frost_set_boolean(&val, 0);
+    EXPECT_FALSE(frost_get_boolean(&val));
+    frost_free(&val);
+}
+
+static void test_access_number() {
+    frost_value val;
+    frost_init(&val);
+    frost_set_string(&val, "a", 1);
+    frost_set_number(&val, 1234.5);
+    EXPECT_EQ_DOUBLE(1234.5, frost_get_number(&val));
+    frost_free(&val);
+}
+
+static void test_access_string() {
+    frost_value val;
+    frost_init(&val);
+    frost_set_string(&val, "", 0);
+    EXPECT_EQ_STRING("", frost_get_string(&val), frost_get_string_length(&val));
+    frost_set_string(&val, "Hello", 5);
+    EXPECT_EQ_STRING("Hello", frost_get_string(&val), frost_get_string_length(&val));
+    frost_free(&val);
+}
+
+
 static void test_parse() {
     test_parse_null();
     test_parse_true();
@@ -135,6 +206,14 @@ static void test_parse() {
     test_parse_invalid_value();
     test_parse_root_not_singular();
     test_parse_number_too_big();
+    test_parse_missing_quotation_mark();
+    test_parse_invalid_string_escape();
+    test_parse_invalid_string_char();
+
+    test_access_null();
+    test_access_boolean();
+    test_access_number();
+    test_access_string();
 }
 
 auto main() -> int {

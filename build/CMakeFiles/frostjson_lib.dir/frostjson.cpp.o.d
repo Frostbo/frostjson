@@ -1,7 +1,7 @@
 CMakeFiles/frostjson_lib.dir/frostjson.cpp.o: \
   /home/frostbo/frostjson/frostjson.cpp \
   /home/frostbo/frostjson/frostjson.h \
-  /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/cassert \
+  /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/cstddef \
   /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/x86_64-linux-gnu/c++/11/bits/c++config.h \
   /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
   /usr/include/features.h /usr/include/features-time64.h \
@@ -12,6 +12,9 @@ CMakeFiles/frostjson_lib.dir/frostjson.cpp.o: \
   /usr/include/x86_64-linux-gnu/gnu/stubs.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
   /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h \
+  /usr/lib/llvm-14/lib/clang/14.0.0/include/stddef.h \
+  /usr/lib/llvm-14/lib/clang/14.0.0/include/__stddef_max_align_t.h \
+  /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/cassert \
   /usr/include/assert.h \
   /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/cctype \
   /usr/include/ctype.h /usr/include/x86_64-linux-gnu/bits/types.h \
@@ -43,9 +46,7 @@ CMakeFiles/frostjson_lib.dir/frostjson.cpp.o: \
   /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
   /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
   /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/bits/std_abs.h \
-  /usr/include/stdlib.h \
-  /usr/lib/llvm-14/lib/clang/14.0.0/include/stddef.h \
-  /usr/include/x86_64-linux-gnu/bits/waitflags.h \
+  /usr/include/stdlib.h /usr/include/x86_64-linux-gnu/bits/waitflags.h \
   /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
   /usr/include/x86_64-linux-gnu/sys/types.h \
   /usr/include/x86_64-linux-gnu/bits/types/clock_t.h \
@@ -69,6 +70,6 @@ CMakeFiles/frostjson_lib.dir/frostjson.cpp.o: \
   /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h \
   /usr/include/alloca.h \
   /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
-  /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/cstddef \
-  /usr/lib/llvm-14/lib/clang/14.0.0/include/__stddef_max_align_t.h \
-  /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/cstdlib
+  /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/cstdlib \
+  /usr/bin/../lib/gcc/x86_64-linux-gnu/11/../../../../include/c++/11/cstring \
+  /usr/include/string.h /usr/include/strings.h
