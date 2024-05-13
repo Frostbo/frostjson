@@ -16,6 +16,7 @@
         assert(*c->json == (ch)); \
         c->json++;                \
     } while (0)
+
 #define PUTC(c, ch)                                         \
     do {                                                    \
         *(char*)frost_context_push(c, sizeof(char)) = (ch); \
@@ -29,7 +30,7 @@ using frost_context = struct {
 
 static auto frost_context_push(frost_context* cot, size_t size) -> void*
 {
-    void* ret;
+    void* ret = nullptr;
     assert(size > 0);
     if (cot->top + size >= cot->size) {
         if (cot->size == 0)
@@ -110,10 +111,58 @@ static auto frost_parse_number(frost_context* cot, frost_value* val) -> int
     return FROST_PARSE_OK;
 }
 
+/*读取4位16进制数字*/
+static auto frost_parse_hex4(const char* end, unsigned* uns) -> const char*
+{
+    int i = 0;
+    *uns = 0;
+    for (i = 0; i < 4; i++) {
+        char ch = *end++;
+        *uns <<= 4;
+        if (ch >= '0' && ch <= '9')
+            *uns |= ch - '0';
+        else if (ch >= 'A' && ch <= 'F')
+            *uns |= ch - ('A' - 10);
+        else if (ch >= 'a' && ch <= 'f')
+            *uns |= ch - ('a' - 10);
+        else
+            return nullptr;
+    }
+    return end;
+}
+
+static void frost_encode_utf8(frost_context* cot, unsigned uns)
+{
+    if (uns <= 0x7F)
+        PUTC(cot, uns & 0xFF);
+    else if (uns <= 0x7FF) {
+        PUTC(cot, 0xC0 | ((uns >> 6) & 0xFF));
+        PUTC(cot, 0x80 | (uns & 0x3F));
+    } else if (uns <= 0xFFFF) {
+        PUTC(cot, 0xE0 | ((uns >> 12) & 0xFF));
+        PUTC(cot, 0x80 | ((uns >> 6) & 0x3F));
+        PUTC(cot, 0x80 | (uns & 0x3F));
+    } else {
+        assert(uns <= 0x10FFFF);
+        PUTC(cot, 0xF0 | ((uns >> 18) & 0xFF));
+        PUTC(cot, 0x80 | ((uns >> 12) & 0x3F));
+        PUTC(cot, 0x80 | ((uns >> 6) & 0x3F));
+        PUTC(cot, 0x80 | (uns & 0x3F));
+    }
+}
+
+#define STRING_ERROR(ret) \
+    do {                  \
+        cot->top = head;    \
+        return ret;       \
+    } while (0)
+
 static auto frost_parse_string(frost_context* cot, frost_value* val) -> int
 {
     size_t head = cot->top;
     size_t len = 0;
+    unsigned uns = 0;
+    unsigned usi = 0;
     const char* end = nullptr;
     EXPECT(cot, '\"');
     end = cot->json;
@@ -150,6 +199,22 @@ static auto frost_parse_string(frost_context* cot, frost_value* val) -> int
                 break;
             case 't':
                 PUTC(cot, '\t');
+                break;
+            case 'u':
+                if ((end = frost_parse_hex4(end, &uns)) == nullptr)
+                    STRING_ERROR(FROST_PARSE_INVALID_UNICODE_HEX);
+                if (uns >= 0xD800 && uns <= 0xDBFF) { 
+                    if (*end++ != '\\')
+                        STRING_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE);
+                    if (*end++ != 'u')
+                        STRING_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE);
+                    if ((end = frost_parse_hex4(end, &usi)) == nullptr)
+                        STRING_ERROR(FROST_PARSE_INVALID_UNICODE_HEX);
+                    if (usi < 0xDC00 || usi > 0xDFFF)
+                        STRING_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE);
+                    uns = (((uns - 0xD800) << 10) | (usi - 0xDC00)) + 0x10000;
+                }
+                frost_encode_utf8(cot, uns);
                 break;
             default:
                 cot->top = head;
@@ -224,12 +289,14 @@ auto frost_get_type(const frost_value* val) -> frost_type
     return val->type;
 }
 
-auto frost_get_boolean(const frost_value* val) -> int {
+auto frost_get_boolean(const frost_value* val) -> int
+{
     assert(val != nullptr && (val->type == FROST_TRUE || val->type == FROST_FALSE));
     return val->type == FROST_TRUE;
 }
 
-void frost_set_boolean(frost_value* val, int bol) {
+void frost_set_boolean(frost_value* val, int bol)
+{
     frost_free(val);
     val->type = (bol != 0) ? FROST_TRUE : FROST_FALSE;
 }
@@ -240,18 +307,21 @@ auto frost_get_number(const frost_value* val) -> double
     return val->u.n;
 }
 
-void frost_set_number(frost_value* val, double num) {
+void frost_set_number(frost_value* val, double num)
+{
     frost_free(val);
     val->u.n = num;
     val->type = FROST_NUMBER;
 }
 
-auto frost_get_string(const frost_value* val) -> const char* {
+auto frost_get_string(const frost_value* val) -> const char*
+{
     assert(val != nullptr && val->type == FROST_STRING);
     return val->u.s.s;
 }
 
-auto frost_get_string_length(const frost_value* val) -> size_t {
+auto frost_get_string_length(const frost_value* val) -> size_t
+{
     assert(val != nullptr && val->type == FROST_STRING);
     return val->u.s.len;
 }
@@ -266,8 +336,6 @@ void frost_set_string(frost_value* val, const char* str, size_t len)
     val->u.s.len = len;
     val->type = FROST_STRING;
 }
-
-
 
 /* JSON-text = ws value ws
 在这个 JSON 语法子集下，我们定义 3 种错误码：
