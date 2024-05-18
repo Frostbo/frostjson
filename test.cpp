@@ -26,6 +26,13 @@ static int test_pass = 0;
 #define EXPECT_TRUE(actual) EXPECT_EQ_BASE((actual) != 0, "true", "false", "%s")
 #define EXPECT_FALSE(actual) EXPECT_EQ_BASE((actual) == 0, "false", "true", "%s")
 
+
+#if defined(_MSC_VER)
+#define EXPECT_EQ_SIZE_T(expect, actual) EXPECT_EQ_BASE((expect) == (actual), (size_t)expect, (size_t)actual, "%Iu")
+#else
+#define EXPECT_EQ_SIZE_T(expect, actual) EXPECT_EQ_BASE((expect) == (actual), (size_t)expect, (size_t)actual, "%zu")
+#endif
+
 static void test_parse_null() {
     frost_value val;
     val.type = FROST_FALSE;
@@ -119,6 +126,46 @@ static void test_parse_string() {
     TEST_STRING("\xF0\x9D\x84\x9E", "\"\\ud834\\udd1e\"");  
 }
 
+static void test_parse_array() {
+    size_t i, j;
+    frost_value val;
+
+    frost_init(&val);
+    EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&val, "[ ]"));
+    EXPECT_EQ_INT(FROST_ARRAY, frost_get_type(&val));
+    EXPECT_EQ_SIZE_T(0, frost_get_array_size(&val));
+    frost_free(&val);
+
+    frost_init(&val);
+    EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&val, "[ null , false , true , 123 , \"abc\" ]"));
+    EXPECT_EQ_INT(FROST_ARRAY, frost_get_type(&val));
+    EXPECT_EQ_SIZE_T(5, frost_get_array_size(&val));
+    EXPECT_EQ_INT(FROST_NULL,  frost_get_type(frost_get_array_element(&val, 0)));
+    EXPECT_EQ_INT(FROST_FALSE,  frost_get_type(frost_get_array_element(&val, 1)));
+    EXPECT_EQ_INT(FROST_TRUE,   frost_get_type(frost_get_array_element(&val, 2)));
+    EXPECT_EQ_INT(FROST_NUMBER, frost_get_type(frost_get_array_element(&val, 3)));
+    EXPECT_EQ_INT(FROST_STRING, frost_get_type(frost_get_array_element(&val, 4)));
+    EXPECT_EQ_DOUBLE(123.0, frost_get_number(frost_get_array_element(&val, 3)));
+    EXPECT_EQ_STRING("abc", frost_get_string(frost_get_array_element(&val, 4)), frost_get_string_length(frost_get_array_element(&val, 4)));
+    frost_free(&val);
+
+    frost_init(&val);
+    EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&val, "[ [ ] , [ 0 ] , [ 0 , 1 ] , [ 0 , 1 , 2 ] ]"));
+    EXPECT_EQ_INT(FROST_ARRAY, frost_get_type(&val));
+    EXPECT_EQ_SIZE_T(4, frost_get_array_size(&val));
+    for (i = 0; i < 4; i++) {
+        frost_value* a = frost_get_array_element(&val, i);
+        EXPECT_EQ_INT(FROST_ARRAY, frost_get_type(a));
+        EXPECT_EQ_SIZE_T(i, frost_get_array_size(a));
+        for (j = 0; j < i; j++) {
+            frost_value* e = frost_get_array_element(a, j);
+            EXPECT_EQ_INT(FROST_NUMBER, frost_get_type(e));
+            EXPECT_EQ_DOUBLE((double)j, frost_get_number(e));
+        }
+    }
+    frost_free(&val);
+}
+
 #define TEST_ERROR(error, json)\
     do {\
         frost_value v;\
@@ -148,6 +195,10 @@ static void test_parse_invalid_value() {
     TEST_ERROR(FROST_PARSE_INVALID_VALUE, "inf");
     TEST_ERROR(FROST_PARSE_INVALID_VALUE, "NAN");
     TEST_ERROR(FROST_PARSE_INVALID_VALUE, "nan");
+
+    /* 无效数组 */
+    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "[1,]");
+    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "[\"a\", nul]");
 }
 
 static void test_parse_root_not_singular() {
@@ -204,11 +255,20 @@ static void test_parse_invalid_unicode_surrogate() {
     TEST_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uE000\"");
 }
 
+static void test_parse_miss_comma_or_square_bracket() {
+    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[1");
+    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[1}");
+    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[1 2");
+    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[[]");
+}
+
 static void test_parse() {
     test_parse_null();
     test_parse_true();
     test_parse_false();
     test_parse_number();
+    test_parse_string();
+    test_parse_array(); 
     test_parse_expect_value();
     test_parse_invalid_value();
     test_parse_root_not_singular();
@@ -218,6 +278,8 @@ static void test_parse() {
     test_parse_invalid_string_char();
     test_parse_invalid_unicode_hex();
     test_parse_invalid_unicode_surrogate();
+    test_parse_miss_comma_or_square_bracket();
+
 }
 
 static void test_access_null() {
@@ -269,7 +331,7 @@ static void test_access() {
 
 auto main() -> int {
     test_parse();
-    test_access();
+    test_access();  
     printf("%d/%d (%3.2f%%) passed\n", test_pass, test_count, test_pass * 100.0 / test_count);
     return main_ret;
 }

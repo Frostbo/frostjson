@@ -5,8 +5,10 @@
 
 using frost_type = enum{ FROST_NULL, FROST_TRUE, FROST_FALSE, FROST_NUMBER, FROST_STRING, FROST_ARRAY, FROST_OBJECT };
 
-using frost_value = struct{
+using frost_value = struct frost_value;
+struct frost_value{
     union{
+        struct { frost_value* e; size_t size; }a;
         struct { char* s; size_t len; }s;
         double n;
     }u;
@@ -23,8 +25,10 @@ enum{
     FROST_PARSE_INVALID_STRING_ESCAPE,
     FROST_PARSE_INVALID_STRING_CHAR,
     FROST_PARSE_INVALID_UNICODE_HEX,
-    FROST_PARSE_INVALID_UNICODE_SURROGATE
+    FROST_PARSE_INVALID_UNICODE_SURROGATE,
+    FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET
 };
+
 
 #define frost_init(v) do { (v)->type = FROST_NULL; } while(0)
 
@@ -44,6 +48,8 @@ auto frost_get_string(const frost_value* val) -> const char*;
 auto frost_get_string_length(const frost_value* val) -> size_t;
 void frost_set_string(frost_value* val, const char* str, size_t len);
 
+auto frost_get_array_size(const frost_value* val) -> size_t; 
+auto frost_get_array_element(const frost_value* val, size_t index) -> frost_value*;
 
 
 #endif /* FROSTJSON_H__ */
