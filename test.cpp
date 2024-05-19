@@ -166,6 +166,65 @@ static void test_parse_array() {
     frost_free(&val);
 }
 
+static void test_parse_object() {
+    frost_value v;
+    size_t i;
+
+    frost_init(&v);
+    EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&v, " { } "));
+    EXPECT_EQ_INT(FROST_OBJECT, frost_get_type(&v));
+    EXPECT_EQ_SIZE_T(0, frost_get_object_size(&v));
+    frost_free(&v);
+
+    frost_init(&v);
+    EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&v,
+        " { "
+        "\"n\" : null , "
+        "\"f\" : false , "
+        "\"t\" : true , "
+        "\"i\" : 123 , "
+        "\"s\" : \"abc\", "
+        "\"a\" : [ 1, 2, 3 ],"
+        "\"o\" : { \"1\" : 1, \"2\" : 2, \"3\" : 3 }"
+        " } "
+    ));
+    EXPECT_EQ_INT(FROST_OBJECT, frost_get_type(&v));
+    EXPECT_EQ_SIZE_T(7, frost_get_object_size(&v));
+    EXPECT_EQ_STRING("n", frost_get_object_key(&v, 0), frost_get_object_key_length(&v, 0));
+    EXPECT_EQ_INT(FROST_NULL,   frost_get_type(frost_get_object_value(&v, 0)));
+    EXPECT_EQ_STRING("f", frost_get_object_key(&v, 1), frost_get_object_key_length(&v, 1));
+    EXPECT_EQ_INT(FROST_FALSE,  frost_get_type(frost_get_object_value(&v, 1)));
+    EXPECT_EQ_STRING("t", frost_get_object_key(&v, 2), frost_get_object_key_length(&v, 2));
+    EXPECT_EQ_INT(FROST_TRUE,   frost_get_type(frost_get_object_value(&v, 2)));
+    EXPECT_EQ_STRING("i", frost_get_object_key(&v, 3), frost_get_object_key_length(&v, 3));
+    EXPECT_EQ_INT(FROST_NUMBER, frost_get_type(frost_get_object_value(&v, 3)));
+    EXPECT_EQ_DOUBLE(123.0, frost_get_number(frost_get_object_value(&v, 3)));
+    EXPECT_EQ_STRING("s", frost_get_object_key(&v, 4), frost_get_object_key_length(&v, 4));
+    EXPECT_EQ_INT(FROST_STRING, frost_get_type(frost_get_object_value(&v, 4)));
+    EXPECT_EQ_STRING("abc", frost_get_string(frost_get_object_value(&v, 4)), frost_get_string_length(frost_get_object_value(&v, 4)));
+    EXPECT_EQ_STRING("a", frost_get_object_key(&v, 5), frost_get_object_key_length(&v, 5));
+    EXPECT_EQ_INT(FROST_ARRAY, frost_get_type(frost_get_object_value(&v, 5)));
+    EXPECT_EQ_SIZE_T(3, frost_get_array_size(frost_get_object_value(&v, 5)));
+    for (i = 0; i < 3; i++) {
+        frost_value* e = frost_get_array_element(frost_get_object_value(&v, 5), i);
+        EXPECT_EQ_INT(FROST_NUMBER, frost_get_type(e));
+        EXPECT_EQ_DOUBLE(i + 1.0, frost_get_number(e));
+    }
+    EXPECT_EQ_STRING("o", frost_get_object_key(&v, 6), frost_get_object_key_length(&v, 6));
+    {
+        frost_value* o = frost_get_object_value(&v, 6);
+        EXPECT_EQ_INT(FROST_OBJECT, frost_get_type(o));
+        for (i = 0; i < 3; i++) {
+            frost_value* ov = frost_get_object_value(o, i);
+            EXPECT_TRUE('1' + i == frost_get_object_key(o, i)[0]);
+            EXPECT_EQ_SIZE_T(1, frost_get_object_key_length(o, i));
+            EXPECT_EQ_INT(FROST_NUMBER, frost_get_type(ov));
+            EXPECT_EQ_DOUBLE(i + 1.0, frost_get_number(ov));
+        }
+    }
+    frost_free(&v);
+}
+
 #define TEST_ERROR(error, json)\
     do {\
         frost_value v;\
@@ -262,6 +321,29 @@ static void test_parse_miss_comma_or_square_bracket() {
     TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[[]");
 }
 
+static void test_parse_miss_key() {
+    TEST_ERROR(FROST_PARSE_MISS_KEY, "{:1,");
+    TEST_ERROR(FROST_PARSE_MISS_KEY, "{1:1,");
+    TEST_ERROR(FROST_PARSE_MISS_KEY, "{true:1,");
+    TEST_ERROR(FROST_PARSE_MISS_KEY, "{false:1,");
+    TEST_ERROR(FROST_PARSE_MISS_KEY, "{null:1,");
+    TEST_ERROR(FROST_PARSE_MISS_KEY, "{[]:1,");
+    TEST_ERROR(FROST_PARSE_MISS_KEY, "{{}:1,");
+    TEST_ERROR(FROST_PARSE_MISS_KEY, "{\"a\":1,");
+}
+
+static void test_parse_miss_colon() {
+    TEST_ERROR(FROST_PARSE_MISS_COLON, "{\"a\"}");
+    TEST_ERROR(FROST_PARSE_MISS_COLON, "{\"a\",\"b\"}");
+}
+
+static void test_parse_miss_comma_or_curly_bracket() {
+    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":1");
+    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":1]");
+    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":1 \"b\"");
+    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":{}");
+}
+
 static void test_parse() {
     test_parse_null();
     test_parse_true();
@@ -269,6 +351,8 @@ static void test_parse() {
     test_parse_number();
     test_parse_string();
     test_parse_array(); 
+    test_parse_object();
+
     test_parse_expect_value();
     test_parse_invalid_value();
     test_parse_root_not_singular();
@@ -279,6 +363,9 @@ static void test_parse() {
     test_parse_invalid_unicode_hex();
     test_parse_invalid_unicode_surrogate();
     test_parse_miss_comma_or_square_bracket();
+    test_parse_miss_key();
+    test_parse_miss_colon();
+    test_parse_miss_comma_or_curly_bracket();
 
 }
 

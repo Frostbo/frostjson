@@ -6,13 +6,22 @@
 using frost_type = enum{ FROST_NULL, FROST_TRUE, FROST_FALSE, FROST_NUMBER, FROST_STRING, FROST_ARRAY, FROST_OBJECT };
 
 using frost_value = struct frost_value;
+using frost_member = struct frost_member;
+
 struct frost_value{
     union{
-        struct { frost_value* e; size_t size; }a;
-        struct { char* s; size_t len; }s;
-        double n;
-    }u;
+        struct { frost_member* m; size_t size; }o;  /* object: members, member count */
+        struct { frost_value* e; size_t size; }a;   /* array:  elements, element count */
+        struct { char* s; size_t len; }s;           /* string: null-terminated string, string length */
+        double n;                                   /* number */
+    }u; 
     frost_type type;
+};
+
+struct frost_member{
+    char* k;
+    size_t klen;
+    frost_value v;
 };
 
 enum{
@@ -26,7 +35,10 @@ enum{
     FROST_PARSE_INVALID_STRING_CHAR,
     FROST_PARSE_INVALID_UNICODE_HEX,
     FROST_PARSE_INVALID_UNICODE_SURROGATE,
-    FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET
+    FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET,
+    FROST_PARSE_MISS_KEY,
+    FROST_PARSE_MISS_COLON,
+    FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET
 };
 
 
@@ -50,6 +62,11 @@ void frost_set_string(frost_value* val, const char* str, size_t len);
 
 auto frost_get_array_size(const frost_value* val) -> size_t; 
 auto frost_get_array_element(const frost_value* val, size_t index) -> frost_value*;
+
+auto frost_get_object_size(const frost_value* val) -> size_t;
+auto frost_get_object_key(const frost_value* val, size_t index) -> const char*;
+auto frost_get_object_key_length(const frost_value* val, size_t index) -> size_t;
+auto frost_get_object_value(const frost_value* val, size_t index) -> frost_value*;
 
 
 #endif /* FROSTJSON_H__ */

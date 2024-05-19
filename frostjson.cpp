@@ -159,10 +159,8 @@ static void frost_encode_utf8(frost_context* cot, unsigned uns)
         return ret;       \
     } while (0)
 
-static auto frost_parse_string(frost_context* cot, frost_value* val) -> int
-{
+static auto frost_parse_string_raw(frost_context* cot, char** str, size_t* len) -> int {
     size_t head = cot->top;
-    size_t len = 0;
     unsigned uns = 0;
     unsigned usi = 0;
     const char* end = nullptr;
@@ -172,8 +170,8 @@ static auto frost_parse_string(frost_context* cot, frost_value* val) -> int
         char ch = *end++;
         switch (ch) {
         case '\"':
-            len = cot->top - head;
-            frost_set_string(val, (const char*)frost_context_pop(cot, len), len);
+            *len = cot->top - head;
+            *str = static_cast<char*>(frost_context_pop(cot, *len));
             cot->json = end;
             return FROST_PARSE_OK;
         case '\\':
@@ -236,6 +234,17 @@ static auto frost_parse_string(frost_context* cot, frost_value* val) -> int
     }
 }
 
+static auto frost_parse_string(frost_context* cot, frost_value* val) -> int
+{
+    int ret = 0;
+    char* str = nullptr;
+    size_t len = 0;
+    ret = frost_parse_string_raw(cot, &str, &len);
+    if(ret == FROST_PARSE_OK)
+        frost_set_string(val, str, len);
+    return ret;
+}
+
 static auto frost_parse_value(frost_context* cot, frost_value* val) -> int;
 static auto frost_parse_array(frost_context* cot, frost_value* val) -> int{
     size_t i = 0;
@@ -284,6 +293,80 @@ static auto frost_parse_array(frost_context* cot, frost_value* val) -> int{
     return ret;
 }
 
+static auto frost_parse_object(frost_context* c, frost_value* v) -> int {
+    size_t size = 0;
+    size_t i = 0;
+    frost_member m;
+    int ret;
+    EXPECT(c, '{');
+    frost_parse_whitespace(c);
+    if (*c->json == '}') {
+        c->json++;
+        v->type = FROST_OBJECT;
+        v->u.o.m = 0;
+        v->u.o.size = 0;
+        return FROST_PARSE_OK;
+    }
+    m.k = NULL;
+    size = 0;
+    for (;;) {
+        char* str;
+        frost_init(&m.v);
+        if(*c->json != '"'){
+            ret = FROST_PARSE_MISS_KEY;
+            break;
+        }
+        ret = frost_parse_string_raw(c, &str, &m.klen);
+        if(ret != FROST_PARSE_OK)
+            break;
+        m.k = (char*)malloc(m.klen+1);
+        memcpy(m.k, str, m.klen);
+        m.k[m.klen] = '\0';
+        /* \todo parse ws colon ws */
+        frost_parse_whitespace(c);
+        if(*c->json != ':'){
+            ret = FROST_PARSE_MISS_COLON;
+            break;
+        }
+        c->json++;
+        frost_parse_whitespace(c);
+        /* parse value */
+        ret = frost_parse_value(c, &m.v);
+        if (ret != FROST_PARSE_OK)
+            break;
+        memcpy(frost_context_push(c, sizeof(frost_member)), &m, sizeof(frost_member));
+        size++;
+        m.k = NULL; 
+        /* \todo parse ws [comma | right-curly-brace] ws */
+        frost_parse_whitespace(c);
+        if (*c->json == ',') {
+            c->json++;
+            frost_parse_whitespace(c);
+        }
+        else if (*c->json == '}') {
+            size_t s = sizeof(frost_member) * size;
+            c->json++;
+            v->type = FROST_OBJECT;
+            v->u.o.size = size;
+            memcpy(v->u.o.m = (frost_member*)malloc(s), frost_context_pop(c, s), s);
+            return FROST_PARSE_OK;
+        }
+        else {
+            ret = FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET;
+            break;
+        }
+    }
+    /* \todo Pop and free members on the stack */
+    free(m.k);
+    for (i = 0; i < size; i++) {
+        frost_member* m = (frost_member*)frost_context_pop(c, sizeof(frost_member));
+        free(m->k);
+        frost_free(&m->v);
+    }
+    v->type = FROST_NULL;
+    return ret;
+}
+
 static auto frost_parse_value(frost_context* cot, frost_value* val) -> int
 {
     switch (*cot->json) {
@@ -299,6 +382,8 @@ static auto frost_parse_value(frost_context* cot, frost_value* val) -> int
         return frost_parse_string(cot, val);
     case '[':
         return frost_parse_array(cot, val);
+    case '{':
+        return frost_parse_object(cot, val);
     case '\0':
         return FROST_PARSE_EXPECT_VALUE;
     }
@@ -329,9 +414,26 @@ auto frost_parse(frost_value* val, const char* json) -> int
 
 void frost_free(frost_value* val)
 {
+    size_t i;
     assert(val != nullptr);
-    if (val->type == FROST_STRING)
-        free(val->u.s.s);
+    switch (val->type) {
+        case FROST_STRING:
+            free(val->u.s.s);
+            break;
+        case FROST_ARRAY:
+            for (i = 0; i < val->u.a.size; i++)
+                frost_free(&val->u.a.e[i]);
+            free(val->u.a.e);
+            break;
+        case FROST_OBJECT:
+            for (i = 0; i < val->u.o.size; i++) {
+                free(val->u.o.m[i].k);
+                frost_free(&val->u.o.m[i].v);
+            }
+            free(val->u.o.m);
+            break;
+        default: break;
+    }
     val->type = FROST_NULL;
 }
 
@@ -399,6 +501,30 @@ auto frost_get_array_element(const frost_value* val, size_t index) -> frost_valu
     assert(index < val->u.a.size);
     return &val->u.a.e[index];
 }
+
+auto frost_get_object_size(const frost_value* val) -> size_t{
+    assert(val != nullptr && val->type == FROST_OBJECT);
+    return val->u.o.size;
+}
+
+auto frost_get_object_key(const frost_value* val, size_t index) -> const char*{
+    assert(val != nullptr && val->type == FROST_OBJECT);
+    assert(index < val->u.o.size);
+    return val->u.o.m[index].k;
+}
+
+auto frost_get_object_key_length(const frost_value* val, size_t index) -> size_t{
+    assert(val != nullptr && val->type == FROST_OBJECT);
+    assert(index < val->u.o.size);
+    return val->u.o.m[index].klen;
+}
+
+auto frost_get_object_value(const frost_value* val, size_t index) -> frost_value*{
+    assert(val != nullptr && val->type == FROST_OBJECT);
+    assert(index < val->u.o.size);
+    return &val->u.o.m[index].v;
+}
+
 
 /* JSON-text = ws value ws
 在这个 JSON 语法子集下，我们定义 3 种错误码：
