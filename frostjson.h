@@ -38,17 +38,19 @@ enum{
     FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET,
     FROST_PARSE_MISS_KEY,
     FROST_PARSE_MISS_COLON,
-    FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET
+    FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET,    
 };
 
 
 #define frost_init(v) do { (v)->type = FROST_NULL; } while(0)
 
 auto frost_parse(frost_value* val, const char* json) -> int; //解析json
-auto frost_get_type(const frost_value* val) -> frost_type; 
+auto frost_stringify(const frost_value* val, size_t* length) -> char*;
 void frost_free(frost_value* val);  // 释放
 
 #define frost_set_null(v) frost_free(v)
+
+auto frost_get_type(const frost_value* val) -> frost_type; 
 
 auto frost_get_boolean(const frost_value* val) -> int; 
 void frost_set_boolean(frost_value* val, int bol);
