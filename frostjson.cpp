@@ -532,6 +532,52 @@ auto frost_stringify(const frost_value* val, size_t* length) -> char*
     return cot.stack;
 }
 
+void frost_copy(frost_value* dst, const frost_value* src) {
+    assert(src != nullptr && dst != nullptr && src != dst);
+    size_t i;
+    switch (src->type) {
+        case FROST_STRING:
+            frost_set_string(dst, src->u.s.s, src->u.s.len);
+            break;
+        case FROST_ARRAY:
+            frost_set_array(dst, src->u.a.size);
+            for(i = 0; i < src->u.a.size; i++){
+                frost_copy(&dst->u.a.e[i], &src->u.a.e[i]);
+            }
+            dst->u.a.size = src->u.a.size;
+            break;
+        case FROST_OBJECT:
+            frost_set_object(dst, src->u.o.size);
+            for(i = 0; i < src->u.o.size; i++){
+                frost_value * val = frost_set_object_value(dst, src->u.o.m[i].k, src->u.o.m[i].klen);
+                frost_copy(val, &src->u.o.m[i].v);
+            }
+            dst->u.o.size = src->u.o.size;
+            break;
+        default:
+            frost_free(dst);
+            memcpy(dst, src, sizeof(frost_value));
+            break;
+    }
+}
+
+void frost_move(frost_value* dst, frost_value* src) {
+    assert(dst != nullptr && src != nullptr && src != dst);
+    frost_free(dst);
+    memcpy(dst, src, sizeof(frost_value));
+    frost_init(src);
+}
+
+void frost_swap(frost_value* lhs, frost_value* rhs) {
+    assert(lhs != nullptr && rhs != nullptr);
+    if (lhs != rhs) {
+        frost_value temp;
+        memcpy(&temp, lhs, sizeof(frost_value));
+        memcpy(lhs,   rhs, sizeof(frost_value));
+        memcpy(rhs, &temp, sizeof(frost_value));
+    }
+}
+
 void frost_free(frost_value* val)
 {
     size_t i;
@@ -562,6 +608,41 @@ auto frost_get_type(const frost_value* val) -> frost_type
 {
     assert(val != nullptr);
     return val->type;
+}
+
+auto frost_is_equal(const frost_value* lhs, const frost_value* rhs) -> int {
+    size_t i = 0;
+    size_t index = 0;
+    assert(lhs != nullptr && rhs != nullptr);
+    if (lhs->type != rhs->type)
+        return 0;
+    switch (lhs->type) {
+        case FROST_STRING:
+            return lhs->u.s.len == rhs->u.s.len && 
+                memcmp(lhs->u.s.s, rhs->u.s.s, lhs->u.s.len) == 0;
+        case FROST_NUMBER:
+            return lhs->u.n == rhs->u.n;
+        case FROST_ARRAY:
+            if (lhs->u.a.size != rhs->u.a.size)
+                return 0;
+            for (i = 0; i < lhs->u.a.size; i++)
+                if (frost_is_equal(&lhs->u.a.e[i], &rhs->u.a.e[i]) == 0)
+                    return 0;
+            return 1;
+        case FROST_OBJECT:
+            if(lhs->u.o.size != rhs->u.o.size)
+                return 0;
+            for(i = 0; i < lhs->u.o.size; i++){
+                index = frost_find_object_index(rhs, lhs->u.o.m[i].k, lhs->u.o.m[i].klen);
+                if(index == FROST_KEY_NOT_EXIST)
+                    return 0;
+                if (frost_is_equal(&lhs->u.o.m[i].v, &rhs->u.o.m[index].v) == 0)
+                    return 0;
+            }
+            return 1;
+        default:
+            return 1;
+    }
 }
 
 auto frost_get_boolean(const frost_value* val) -> int
@@ -612,23 +693,139 @@ void frost_set_string(frost_value* val, const char* str, size_t len)
     val->type = FROST_STRING;
 }
 
+void frost_set_array(frost_value* val, size_t capacity) {
+    assert(val != nullptr);
+    frost_free(val);
+    val->type = FROST_ARRAY;
+    val->u.a.size = 0;
+    val->u.a.capacity = capacity;
+    val->u.a.e = capacity > 0 ? (frost_value*)malloc(capacity * sizeof(frost_value)) : nullptr;
+}
+
+
 auto frost_get_array_size(const frost_value* val) -> size_t
 {
     assert(val != nullptr && val->type == FROST_ARRAY);
     return val->u.a.size;
 }
 
-auto frost_get_array_element(const frost_value* val, size_t index) -> frost_value*
-{
+auto frost_get_array_capacity(const frost_value* val) -> size_t {
+    assert(val != nullptr && val->type == FROST_ARRAY);
+    return val->u.a.capacity;
+}
+
+void frost_reserve_array(frost_value* val, size_t capacity) {
+    assert(val != nullptr && val->type == FROST_ARRAY);
+    if (val->u.a.capacity < capacity) {
+        val->u.a.capacity = capacity;
+        val->u.a.e = (frost_value*)realloc(val->u.a.e, capacity * sizeof(frost_value));
+    }
+}
+
+void frost_shrink_array(frost_value* val) {
+    assert(val != nullptr && val->type == FROST_ARRAY);
+    if (val->u.a.capacity > val->u.a.size) {
+        val->u.a.capacity = val->u.a.size;
+        val->u.a.e = (frost_value*)realloc(val->u.a.e, val->u.a.capacity * sizeof(frost_value));
+    }
+}
+
+void frost_clear_array(frost_value* val) {
+    assert(val != nullptr && val->type == FROST_ARRAY);
+    frost_erase_array_element(val, 0, val->u.a.size);
+}
+
+auto frost_get_array_element(frost_value* val, size_t index) -> frost_value* {
     assert(val != nullptr && val->type == FROST_ARRAY);
     assert(index < val->u.a.size);
     return &val->u.a.e[index];
+}
+
+/*添加*/
+auto frost_pushback_array_element(frost_value* val) -> frost_value* {
+    assert(val != nullptr && val->type == FROST_ARRAY);
+    if (val->u.a.size == val->u.a.capacity)
+        frost_reserve_array(val, val->u.a.capacity == 0 ? 1 : val->u.a.capacity * 2);
+    frost_init(&val->u.a.e[val->u.a.size]);
+    return &val->u.a.e[val->u.a.size++];
+}
+
+/*弹出*/
+void frost_popback_array_element(frost_value* val) {
+    assert(val != nullptr && val->type == FROST_ARRAY && val->u.a.size > 0);
+    frost_free(&val->u.a.e[--val->u.a.size]);
+}
+
+/*插入*/
+auto frost_insert_array_element(frost_value* val, size_t index) -> frost_value* {
+    assert(val != nullptr && val->type == FROST_ARRAY && index <= val->u.a.size);
+    if(val->u.a.size == val->u.a.capacity) frost_reserve_array(val, val->u.a.capacity == 0 ? 1 : (val->u.a.size << 1)); //扩容为原来一倍
+    memcpy(&val->u.a.e[index + 1], &val->u.a.e[index], (val->u.a.size - index) * sizeof(frost_value));
+    frost_init(&val->u.a.e[index]);
+    val->u.a.size++;
+    return &val->u.a.e[index];
+}
+
+/*删除*/
+void frost_erase_array_element(frost_value* val, size_t index, size_t count) {
+    assert(val != nullptr && val->type == FROST_ARRAY && index + count <= val->u.a.size);
+    size_t i;
+    for(i = index; i < index + count; i++){
+        frost_free(&val->u.a.e[i]);
+    }
+    memcpy(val->u.a.e + index, val->u.a.e + index + count, (val->u.a.size - index - count) * sizeof(frost_value));
+    for(i = val->u.a.size - count; i < val->u.a.size; i++)
+        frost_init(&val->u.a.e[i]);
+    val->u.a.size -= count;
+}
+
+
+void frost_set_object(frost_value* val, size_t capacity) {
+    assert(val != nullptr);
+    frost_free(val);
+    val->type = FROST_OBJECT;
+    val->u.o.size = 0;
+    val->u.o.capacity = capacity;
+    val->u.o.m = capacity > 0 ? (frost_member*)malloc(capacity * sizeof(frost_member)) : nullptr;
 }
 
 auto frost_get_object_size(const frost_value* val) -> size_t
 {
     assert(val != nullptr && val->type == FROST_OBJECT);
     return val->u.o.size;
+}
+
+auto frost_get_object_capacity(const frost_value* val) -> size_t {
+    assert(val != nullptr && val->type == FROST_OBJECT);
+    return val->u.o.capacity;
+}
+
+void frost_reserve_object(frost_value* val, size_t capacity) {
+    assert(val != nullptr && val->type == FROST_OBJECT);
+    if (val->u.o.capacity < capacity) {
+        val->u.o.capacity = capacity;
+        val->u.o.m = (frost_member*)realloc(val->u.o.m, capacity * sizeof(frost_member));
+    }
+}
+
+void frost_shrink_object(frost_value* val) {
+    assert(val != nullptr && val->type == FROST_OBJECT);
+    if (val->u.o.capacity > val->u.o.size) {
+        val->u.o.capacity = val->u.o.size;
+        val->u.o.m = (frost_member*)realloc(val->u.o.m, val->u.o.capacity * sizeof(frost_member));
+    }
+}
+
+void frost_clear_object(frost_value* val) {
+    assert(val != nullptr && val->type == FROST_OBJECT);
+    size_t i = 0;
+    for(i = 0; i < val->u.o.size; i++){
+        free(val->u.o.m[i].k);
+        val->u.o.m[i].k = nullptr;
+        val->u.o.m[i].klen = 0;
+        frost_free(&val->u.o.m[i].v);
+    }
+    val->u.o.size = 0;
 }
 
 auto frost_get_object_key(const frost_value* val, size_t index) -> const char*
@@ -650,4 +847,47 @@ auto frost_get_object_value(const frost_value* val, size_t index) -> frost_value
     assert(val != nullptr && val->type == FROST_OBJECT);
     assert(index < val->u.o.size);
     return &val->u.o.m[index].v;
+}
+
+auto frost_find_object_index(const frost_value* val, const char* key, size_t klen) -> size_t {
+    size_t i = 0;
+    assert(val != nullptr && val->type == FROST_OBJECT && key != nullptr);
+    for (i = 0; i < val->u.o.size; i++)
+        if (val->u.o.m[i].klen == klen && memcmp(val->u.o.m[i].k, key, klen) == 0)
+            return i;
+    return FROST_KEY_NOT_EXIST;
+}
+
+auto frost_find_object_value(frost_value* val, const char* key, size_t klen) -> frost_value* {
+    size_t index = frost_find_object_index(val, key, klen);
+    return index != FROST_KEY_NOT_EXIST ? &val->u.o.m[index].v : nullptr;
+}
+
+auto frost_set_object_value(frost_value* val, const char* key, size_t klen) -> frost_value* {
+    assert(val != nullptr && val->type == FROST_OBJECT && key != nullptr);
+    size_t i, index;
+    index = frost_find_object_index(val, key, klen);
+    if(index != FROST_KEY_NOT_EXIST)
+        return &val->u.o.m[index].v;
+    if(val->u.o.size == val->u.o.capacity){
+        frost_reserve_object(val, val->u.o.capacity == 0 ? 1 : (val->u.o.capacity << 1));
+    }
+    i = val->u.o.size;
+    val->u.o.m[i].k = (char *)malloc((klen + 1));
+    memcpy(val->u.o.m[i].k, key, klen);
+    val->u.o.m[i].k[klen] = '\0';
+    val->u.o.m[i].klen = klen;
+    frost_init(&val->u.o.m[i].v);
+    val->u.o.size++;
+    return &val->u.o.m[i].v;
+}
+
+void frost_remove_object_value(frost_value* val, size_t index) {
+    assert(val != nullptr && val->type == FROST_OBJECT && index < val->u.o.size);
+    free(val->u.o.m[index].k);
+    frost_free(&val->u.o.m[index].v);
+    memcpy(val->u.o.m + index, val->u.o.m + index + 1, (val->u.o.size - index - 1) * sizeof(frost_member));
+    val->u.o.m[--val->u.o.size].k = nullptr;
+    val->u.o.m[val->u.o.size].klen = 0;
+    frost_init(&val->u.o.m[val->u.o.size].v);
 }

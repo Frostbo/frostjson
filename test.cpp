@@ -225,7 +225,7 @@ static void test_parse_object() {
     frost_free(&v);
 }
 
-#define TEST_ERROR(error, json)\
+#define TEST_PARSE_ERROR(error, json)\
     do {\
         frost_value v;\
         frost_init(&v);\
@@ -236,112 +236,112 @@ static void test_parse_object() {
     } while(0)
 
 static void test_parse_expect_value() {
-    TEST_ERROR(FROST_PARSE_EXPECT_VALUE, "");
-    TEST_ERROR(FROST_PARSE_EXPECT_VALUE, " ");
+    TEST_PARSE_ERROR(FROST_PARSE_EXPECT_VALUE, "");
+    TEST_PARSE_ERROR(FROST_PARSE_EXPECT_VALUE, " ");
 }
 
 static void test_parse_invalid_value() {
     /* 无效类型 */
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "nul");
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "?");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "nul");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "?");
 
     /* 无效数字 */
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "+0");
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "+1");
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, ".123"); /* '.'前面至少有一位 */
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "1.");   /* '.'后面至少有一位 */
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "INF");
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "inf");
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "NAN");
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "nan");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "+0");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "+1");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, ".123"); /* '.'前面至少有一位 */
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "1.");   /* '.'后面至少有一位 */
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "INF");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "inf");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "NAN");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "nan");
 
     /* 无效数组 */
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "[1,]");
-    TEST_ERROR(FROST_PARSE_INVALID_VALUE, "[\"a\", nul]");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "[1,]");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_VALUE, "[\"a\", nul]");
 }
 
 static void test_parse_root_not_singular() {
-    TEST_ERROR(FORST_PARSE_ROOT_NOT_SINGULAR, "null x");
+    TEST_PARSE_ERROR(FORST_PARSE_ROOT_NOT_SINGULAR, "null x");
 
-    TEST_ERROR(FORST_PARSE_ROOT_NOT_SINGULAR, "0123"); /* 0开头的特殊情况 */
-    TEST_ERROR(FORST_PARSE_ROOT_NOT_SINGULAR, "0x0");
-    TEST_ERROR(FORST_PARSE_ROOT_NOT_SINGULAR, "0x123");
+    TEST_PARSE_ERROR(FORST_PARSE_ROOT_NOT_SINGULAR, "0123"); /* 0开头的特殊情况 */
+    TEST_PARSE_ERROR(FORST_PARSE_ROOT_NOT_SINGULAR, "0x0");
+    TEST_PARSE_ERROR(FORST_PARSE_ROOT_NOT_SINGULAR, "0x123");
 }
 
 static void test_parse_number_too_big() {
-    TEST_ERROR(FROST_PARSE_NUMBER_TOO_BIG, "1e309");
-    TEST_ERROR(FROST_PARSE_NUMBER_TOO_BIG, "-1e309");
+    TEST_PARSE_ERROR(FROST_PARSE_NUMBER_TOO_BIG, "1e309");
+    TEST_PARSE_ERROR(FROST_PARSE_NUMBER_TOO_BIG, "-1e309");
 }
 
 static void test_parse_missing_quotation_mark() {
-    TEST_ERROR(FROST_PARSE_MISS_QUOTATION_MARK, "\"");
-    TEST_ERROR(FROST_PARSE_MISS_QUOTATION_MARK, "\"abc");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_QUOTATION_MARK, "\"");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_QUOTATION_MARK, "\"abc");
 }
 
 static void test_parse_invalid_string_escape() {
-    TEST_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\v\"");
-    TEST_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\'\"");
-    TEST_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\0\"");
-    TEST_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\x12\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\v\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\'\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\0\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_STRING_ESCAPE, "\"\\x12\"");
 }
 
 static void test_parse_invalid_string_char() {
-    TEST_ERROR(FROST_PARSE_INVALID_STRING_CHAR, "\"\x01\"");
-    TEST_ERROR(FROST_PARSE_INVALID_STRING_CHAR, "\"\x1F\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_STRING_CHAR, "\"\x01\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_STRING_CHAR, "\"\x1F\"");
 }
 
 static void test_parse_invalid_unicode_hex() {
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u0\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u01\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u012\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u/000\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\uG000\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u0/00\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u0G00\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u00/0\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u00G0\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u000/\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u000G\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u 123\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u0\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u01\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u012\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u/000\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\uG000\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u0/00\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u0G00\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u00/0\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u00G0\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u000/\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u000G\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_HEX, "\"\\u 123\"");
 }
 
 static void test_parse_invalid_unicode_surrogate() {
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uDBFF\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\\\\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uDBFF\"");
-    TEST_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uE000\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uDBFF\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\\\\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uDBFF\"");
+    TEST_PARSE_ERROR(FROST_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uE000\"");
 }
 
 static void test_parse_miss_comma_or_square_bracket() {
-    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[1");
-    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[1}");
-    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[1 2");
-    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[[]");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[1");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[1}");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[1 2");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[[]");
 }
 
 static void test_parse_miss_key() {
-    TEST_ERROR(FROST_PARSE_MISS_KEY, "{:1,");
-    TEST_ERROR(FROST_PARSE_MISS_KEY, "{1:1,");
-    TEST_ERROR(FROST_PARSE_MISS_KEY, "{true:1,");
-    TEST_ERROR(FROST_PARSE_MISS_KEY, "{false:1,");
-    TEST_ERROR(FROST_PARSE_MISS_KEY, "{null:1,");
-    TEST_ERROR(FROST_PARSE_MISS_KEY, "{[]:1,");
-    TEST_ERROR(FROST_PARSE_MISS_KEY, "{{}:1,");
-    TEST_ERROR(FROST_PARSE_MISS_KEY, "{\"a\":1,");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_KEY, "{:1,");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_KEY, "{1:1,");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_KEY, "{true:1,");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_KEY, "{false:1,");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_KEY, "{null:1,");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_KEY, "{[]:1,");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_KEY, "{{}:1,");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_KEY, "{\"a\":1,");
 }
 
 static void test_parse_miss_colon() {
-    TEST_ERROR(FROST_PARSE_MISS_COLON, "{\"a\"}");
-    TEST_ERROR(FROST_PARSE_MISS_COLON, "{\"a\",\"b\"}");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COLON, "{\"a\"}");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COLON, "{\"a\",\"b\"}");
 }
 
 static void test_parse_miss_comma_or_curly_bracket() {
-    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":1");
-    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":1]");
-    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":1 \"b\"");
-    TEST_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":{}");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":1");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":1]");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":1 \"b\"");
+    TEST_PARSE_ERROR(FROST_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":{}");
 }
 
 static void test_parse() {
@@ -393,14 +393,14 @@ static void test_stringify_number() {
     TEST_ROUNDTRIP("1.234e+20");
     TEST_ROUNDTRIP("1.234e-20");
 
-    TEST_ROUNDTRIP("1.0000000000000002"); /* the smallest number > 1 */
-    TEST_ROUNDTRIP("4.9406564584124654e-324"); /* minimum denormal */
+    TEST_ROUNDTRIP("1.0000000000000002"); /* 最小的数字 > 1 */
+    TEST_ROUNDTRIP("4.9406564584124654e-324"); /* 最小的非规格化数 */
     TEST_ROUNDTRIP("-4.9406564584124654e-324");
-    TEST_ROUNDTRIP("2.2250738585072009e-308");  /* Max subnormal double */
+    TEST_ROUNDTRIP("2.2250738585072009e-308");  /* 最大的非规格化数 */
     TEST_ROUNDTRIP("-2.2250738585072009e-308");
-    TEST_ROUNDTRIP("2.2250738585072014e-308");  /* Min normal positive double */
+    TEST_ROUNDTRIP("2.2250738585072014e-308");  /* 最小的规格化正数 */
     TEST_ROUNDTRIP("-2.2250738585072014e-308");
-    TEST_ROUNDTRIP("1.7976931348623157e+308");  /* Max double */
+    TEST_ROUNDTRIP("1.7976931348623157e+308");  /* 最大浮点数 */
     TEST_ROUNDTRIP("-1.7976931348623157e+308");
 }
 
@@ -430,6 +430,83 @@ static void test_stringify() {
     test_stringify_string();
     test_stringify_array();
     test_stringify_object();
+}
+
+#define TEST_EQUAL(json1, json2, equality) \
+    do {\
+        frost_value v1, v2;\
+        frost_init(&v1);\
+        frost_init(&v2);\
+        EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&v1, json1));\
+        EXPECT_EQ_INT(FROST_PARSE_OK, frost_parse(&v2, json2));\
+        EXPECT_EQ_INT(equality, frost_is_equal(&v1, &v2));\
+        frost_free(&v1);\
+        frost_free(&v2);\
+    } while(0)
+
+static void test_equal() {
+    TEST_EQUAL("true", "true", 1);
+    TEST_EQUAL("true", "false", 0);
+    TEST_EQUAL("false", "false", 1);
+    TEST_EQUAL("null", "null", 1);
+    TEST_EQUAL("null", "0", 0);
+    TEST_EQUAL("123", "123", 1);
+    TEST_EQUAL("123", "456", 0);
+    TEST_EQUAL("\"abc\"", "\"abc\"", 1);
+    TEST_EQUAL("\"abc\"", "\"abcd\"", 0);
+    TEST_EQUAL("[]", "[]", 1);
+    TEST_EQUAL("[]", "null", 0);
+    TEST_EQUAL("[1,2,3]", "[1,2,3]", 1);
+    TEST_EQUAL("[1,2,3]", "[1,2,3,4]", 0);
+    TEST_EQUAL("[[]]", "[[]]", 1);
+    TEST_EQUAL("{}", "{}", 1);
+    TEST_EQUAL("{}", "null", 0);
+    TEST_EQUAL("{}", "[]", 0);
+    TEST_EQUAL("{\"a\":1,\"b\":2}", "{\"a\":1,\"b\":2}", 1);
+    TEST_EQUAL("{\"a\":1,\"b\":2}", "{\"b\":2,\"a\":1}", 1);
+    TEST_EQUAL("{\"a\":1,\"b\":2}", "{\"a\":1,\"b\":3}", 0);
+    TEST_EQUAL("{\"a\":1,\"b\":2}", "{\"a\":1,\"b\":2,\"c\":3}", 0);
+    TEST_EQUAL("{\"a\":{\"b\":{\"c\":{}}}}", "{\"a\":{\"b\":{\"c\":{}}}}", 1);
+    TEST_EQUAL("{\"a\":{\"b\":{\"c\":{}}}}", "{\"a\":{\"b\":{\"c\":[]}}}", 0);
+}
+
+static void test_copy() {
+    frost_value v1, v2;
+    frost_init(&v1);
+    frost_parse(&v1, "{\"t\":true,\"f\":false,\"n\":null,\"d\":1.5,\"a\":[1,2,3]}");
+    frost_init(&v2);
+    frost_copy(&v2, &v1);
+    EXPECT_TRUE(frost_is_equal(&v2, &v1));
+    frost_free(&v1);
+    frost_free(&v2);
+}
+
+static void test_move() {
+    frost_value v1, v2, v3;
+    frost_init(&v1);
+    frost_parse(&v1, "{\"t\":true,\"f\":false,\"n\":null,\"d\":1.5,\"a\":[1,2,3]}");
+    frost_init(&v2);
+    frost_copy(&v2, &v1);
+    frost_init(&v3);
+    frost_move(&v3, &v2);
+    EXPECT_EQ_INT(FROST_NULL, frost_get_type(&v2));
+    EXPECT_TRUE(frost_is_equal(&v3, &v1));
+    frost_free(&v1);
+    frost_free(&v2);
+    frost_free(&v3);
+}
+
+static void test_swap() {
+    frost_value v1, v2;
+    frost_init(&v1);
+    frost_init(&v2);
+    frost_set_string(&v1, "Hello",  5);
+    frost_set_string(&v2, "World!", 6);
+    frost_swap(&v1, &v2);
+    EXPECT_EQ_STRING("World!", frost_get_string(&v1), frost_get_string_length(&v1));
+    EXPECT_EQ_STRING("Hello",  frost_get_string(&v2), frost_get_string_length(&v2));
+    frost_free(&v1);
+    frost_free(&v2);
 }
 
 static void test_access_null() {
@@ -471,17 +548,170 @@ static void test_access_string() {
     frost_free(&val);
 }
 
+static void test_access_array() {
+    frost_value a, e;
+    size_t i, j;
+
+    frost_init(&a);
+
+    for (j = 0; j <= 5; j += 5) {
+        frost_set_array(&a, j);
+        EXPECT_EQ_SIZE_T(0, frost_get_array_size(&a));
+        EXPECT_EQ_SIZE_T(j, frost_get_array_capacity(&a));
+        for (i = 0; i < 10; i++) {
+            frost_init(&e);
+            frost_set_number(&e, i);
+            frost_move(frost_pushback_array_element(&a), &e);
+            frost_free(&e);
+        }
+
+        EXPECT_EQ_SIZE_T(10, frost_get_array_size(&a));
+        for (i = 0; i < 10; i++)
+            EXPECT_EQ_DOUBLE((double)i, frost_get_number(frost_get_array_element(&a, i)));
+    }
+
+    frost_popback_array_element(&a);
+    EXPECT_EQ_SIZE_T(9, frost_get_array_size(&a));
+    for (i = 0; i < 9; i++)
+        EXPECT_EQ_DOUBLE((double)i, frost_get_number(frost_get_array_element(&a, i)));
+
+    frost_erase_array_element(&a, 4, 0);
+    EXPECT_EQ_SIZE_T(9, frost_get_array_size(&a));
+    for (i = 0; i < 9; i++)
+        EXPECT_EQ_DOUBLE((double)i, frost_get_number(frost_get_array_element(&a, i)));
+
+    frost_erase_array_element(&a, 8, 1);
+    EXPECT_EQ_SIZE_T(8, frost_get_array_size(&a));
+    for (i = 0; i < 8; i++)
+        EXPECT_EQ_DOUBLE((double)i, frost_get_number(frost_get_array_element(&a, i)));
+
+    frost_erase_array_element(&a, 0, 2);
+    EXPECT_EQ_SIZE_T(6, frost_get_array_size(&a));
+    for (i = 0; i < 6; i++)
+        EXPECT_EQ_DOUBLE((double)i + 2, frost_get_number(frost_get_array_element(&a, i)));
+
+    for (i = 0; i < 2; i++) {
+        frost_init(&e);
+        frost_set_number(&e, i);
+        frost_move(frost_insert_array_element(&a, i), &e);
+        frost_free(&e);
+    }
+    
+    EXPECT_EQ_SIZE_T(8, frost_get_array_size(&a));
+    for (i = 0; i < 8; i++)
+        EXPECT_EQ_DOUBLE((double)i, frost_get_number(frost_get_array_element(&a, i)));
+
+    EXPECT_TRUE(frost_get_array_capacity(&a) > 8);
+    frost_shrink_array(&a);
+    EXPECT_EQ_SIZE_T(8, frost_get_array_capacity(&a));
+    EXPECT_EQ_SIZE_T(8, frost_get_array_size(&a));
+    for (i = 0; i < 8; i++)
+        EXPECT_EQ_DOUBLE((double)i, frost_get_number(frost_get_array_element(&a, i)));
+
+    frost_set_string(&e, "Hello", 5);
+    frost_move(frost_pushback_array_element(&a), &e);     /* Test if element is freed */
+    frost_free(&e);
+
+    i = frost_get_array_capacity(&a);
+    frost_clear_array(&a);
+    EXPECT_EQ_SIZE_T(0, frost_get_array_size(&a));
+    EXPECT_EQ_SIZE_T(i, frost_get_array_capacity(&a));   /* capacity remains unchanged */
+    frost_shrink_array(&a);
+    EXPECT_EQ_SIZE_T(0, frost_get_array_capacity(&a));
+
+    frost_free(&a);
+}
+
+static void test_access_object() {
+#if 0
+    frost_value o, v, *pv;
+    size_t i, j, index;
+
+    frost_init(&o);
+
+    for (j = 0; j <= 5; j += 5) {
+        frost_set_object(&o, j);
+        EXPECT_EQ_SIZE_T(0, frost_get_object_size(&o));
+        EXPECT_EQ_SIZE_T(j, frost_get_object_capacity(&o));
+        for (i = 0; i < 10; i++) {
+            char key[2] = "a";
+            key[0] += i;
+            frost_init(&v);
+            frost_set_number(&v, i);
+            frost_move(frost_set_object_value(&o, key, 1), &v);
+            frost_free(&v);
+        }
+        EXPECT_EQ_SIZE_T(10, frost_get_object_size(&o));
+        for (i = 0; i < 10; i++) {
+            char key[] = "a";
+            key[0] += i;
+            index = frost_find_object_index(&o, key, 1);
+            EXPECT_TRUE(index != LEPT_KEY_NOT_EXIST);
+            pv = frost_get_object_value(&o, index);
+            EXPECT_EQ_DOUBLE((double)i, frost_get_number(pv));
+        }
+    }
+
+    index = frost_find_object_index(&o, "j", 1);    
+    EXPECT_TRUE(index != LEPT_KEY_NOT_EXIST);
+    frost_remove_object_value(&o, index);
+    index = frost_find_object_index(&o, "j", 1);
+    EXPECT_TRUE(index == LEPT_KEY_NOT_EXIST);
+    EXPECT_EQ_SIZE_T(9, frost_get_object_size(&o));
+
+    index = frost_find_object_index(&o, "a", 1);
+    EXPECT_TRUE(index != LEPT_KEY_NOT_EXIST);
+    frost_remove_object_value(&o, index);
+    index = frost_find_object_index(&o, "a", 1);
+    EXPECT_TRUE(index == LEPT_KEY_NOT_EXIST);
+    EXPECT_EQ_SIZE_T(8, frost_get_object_size(&o));
+
+    EXPECT_TRUE(frost_get_object_capacity(&o) > 8);
+    frost_shrink_object(&o);
+    EXPECT_EQ_SIZE_T(8, frost_get_object_capacity(&o));
+    EXPECT_EQ_SIZE_T(8, frost_get_object_size(&o));
+    for (i = 0; i < 8; i++) {
+        char key[] = "a";
+        key[0] += i + 1;
+        EXPECT_EQ_DOUBLE((double)i + 1, frost_get_number(frost_get_object_value(&o, frost_find_object_index(&o, key, 1))));
+    }
+
+    frost_set_string(&v, "Hello", 5);
+    frost_move(frost_set_object_value(&o, "World", 5), &v); /* Test if element is freed */
+    frost_free(&v);
+
+    pv = frost_find_object_value(&o, "World", 5);
+    EXPECT_TRUE(pv != NULL);
+    EXPECT_EQ_STRING("Hello", frost_get_string(pv), frost_get_string_length(pv));
+
+    i = frost_get_object_capacity(&o);
+    frost_clear_object(&o);
+    EXPECT_EQ_SIZE_T(0, frost_get_object_size(&o));
+    EXPECT_EQ_SIZE_T(i, frost_get_object_capacity(&o)); /* capacity remains unchanged */
+    frost_shrink_object(&o);
+    EXPECT_EQ_SIZE_T(0, frost_get_object_capacity(&o));
+
+    frost_free(&o);
+#endif
+}
+
 static void test_access() {
     test_access_null();
     test_access_boolean();
     test_access_number();
     test_access_string();
+    test_access_array();
+    test_access_object();
 }
 
 
 auto main() -> int {
     test_parse();
     test_stringify();
+    test_equal();
+    test_copy();
+    test_move();
+    test_swap();
     test_access();  
     printf("%d/%d (%3.2f%%) passed\n", test_pass, test_count, test_pass * 100.0 / test_count);
     return main_ret;
